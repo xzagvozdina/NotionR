@@ -3,7 +3,7 @@ title: "Weekly Review"
 output: html_document
 ---
 
-Hey, love! Here is the first version of a weekly report on our procrastination. Send your suggestions to <xenia.zagvozdina@yandex.ru> or leave in comments in GitHub repository. Updates will come. Stay tuned.
+Hey, love! Here is the first version of a weekly report on our procrastination. Send your suggestions to <xenia.zagvozdina@yandex.ru> or leave in comments in [GitHub repository](https://github.com/xzagvozdina/NotionR). Updates will come. Stay tuned.
 
 Mindfulness is everything! Go fucking work!
 
