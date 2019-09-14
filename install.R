@@ -1,0 +1,7 @@
+install.packages(stringr)
+install.packages(lubridate)
+install.packages(dplyr)
+install.packages(ggplot2)
+install.packages(ggpubr)
+install.packages(knitr)
+install.packages(gridExtra)

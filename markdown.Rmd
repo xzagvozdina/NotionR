@@ -1,0 +1,142 @@
+---
+title: "Weekly Review"
+output: html_document
+---
+
+Hey, love! Here is the first version of a weekly report on our procrastination. Send your suggestions to <xenia.zagvozdina@yandex.ru> or leave in comments in GitHub repository. Updates will come. Stay tuned.
+
+Mindfulness is everything! Go fucking work!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+####### Подключаемые библиотеки ########
+library(stringr)
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(knitr)
+library(gridExtra)
+
+
+####### Функции ########
+# построение круговой диаграммы
+pie_graph <- function(table, x, y, pie_title, coef, colours, with_legend=0){
+  table1 <- select(table, c(x, y))
+  colnames(table1) <- c("x", "y")
+  df <- aggregate(table1$y, by=list(label=table1$x), FUN=sum)
+  pl = ggplot(df, aes(x="", y=x, fill=label)) + geom_bar(stat="identity", width=1) 
+  pl = pl + coord_polar("y", start=0) 
+  pl = pl + geom_text(aes(label = paste0(round(x*coef))), position = position_stack(vjust = 0.5))
+  pl = pl + scale_fill_manual(values=colours) 
+  pl = pl + labs(x = NULL, y = NULL, fill = NULL, title = pie_title)
+  if (with_legend == 1){
+    pl = pl + theme_classic() + theme(axis.line = element_blank(),
+                                      axis.text = element_blank(),
+                                      axis.ticks = element_blank(),
+                                      plot.title = element_text(hjust = 0.5, color = "#666666"))
+  } else{
+    pl = pl + theme_classic() + theme(legend.position = "none") + theme(axis.line = element_blank(),
+                                                                        axis.text = element_blank(),
+                                                                        axis.ticks = element_blank(),
+                                                                        plot.title = element_text(hjust = 0.5, color = "#666666"))
+  }
+  return(pl)
+}
+# все понедельники в обратном порядке
+get_all_mondays <- function(first_monday){
+  today <- today("GMT")
+  all_mondays <- c()
+  new_monday <- first_monday
+  end <- FALSE
+  while(!end){
+    all_mondays <- c(all_mondays, as.Date(new_monday))
+    new_monday <- new_monday + 7
+    end <- new_monday > today
+  }
+  return(as.Date(sort(all_mondays, decreasing = TRUE), "1970-01-01"))
+}
+
+
+####### Глобальные переменные ########
+folder <- "C:\\Users\\Ксения\\Desktop\\Planning" # папка с данными
+file_name <- "Xusha-Do.csv" # имя файла с данными
+beginning <- as.Date("2019-08-26", "%Y-%m-%d") # начало ведения задач
+
+
+####### Обработка данных ########
+setwd(folder)
+data <- read.csv(file_name, encoding = "UTF-8")
+data$X.U.FEFF.Name <- as.character(data$X.U.FEFF.Name)
+data$Assign <- as.character(data$Assign)
+data$Checked <- as.character(data$Checked)
+data$Date.Created <- as.character(data$Date.Created)
+data$Due.Date <- as.character(data$Due.Date)
+data$Postponed <- as.character(data$Postponed)
+data$Priority <- as.character(data$Priority)
+data$Status <- as.character(data$Status)
+data$Tag <- as.character(data$Tag)
+data$cnt <- 1
+data$Due.Date <- str_replace_all(string=data$Due.Date, pattern=" ", repl="")
+data$Due.Date <- str_replace_all(string=data$Due.Date, pattern=",", repl="")
+data$Due.Date <- as.Date(parse_date_time(data$Due.Date, orders = "bdY"))
+#data <- data[data$Status != "Archived", ]
+data$Pomodoros <- ifelse(is.na(data$Pomodoros),1,data$Pomodoros)
+data$Actual.pomodoros <- ifelse(is.na(data$Actual.pomodoros),0,data$Actual.pomodoros)
+data$Status <- ifelse(is.na(data$Status), "-", data$Status)
+data <- data[data$X.U.FEFF.Name != "Task", ]
+
+# цвета
+cust_colours <- c("#55DDE0", "#33658A", "#2F4858", "#F6AE2D", "#F26419", "#999999", "#888888")
+#cust_colours <- sample(colours(), length(unique(data$Tag)))
+```
+
+```{r, results='asis', echo = FALSE, warning=FALSE}
+all_mondays <- get_all_mondays(beginning)
+i <- 0
+for (monday in all_mondays){
+  sunday <- monday + 6
+  monday <- as.Date(monday, "1970-01-01")
+  sunday <- as.Date(sunday, "1970-01-01")
+  week_n <- length(all_mondays) - i
+  
+  cat("## Week ", week_n, "  \n ")
+  
+  cur_data <- data[data$Due.Date >= monday & data$Due.Date <= sunday, ]
+  cat("Planned / Spent hours: ", sum(cur_data$Pomodoros)*0.5, " / ", sum(cur_data$Actual.pomodoros)*0.5, "  \n ")
+  
+  not_completed_n <- nrow(cur_data[cur_data$Status!="Completed"&cur_data$Status!="Rejected"&cur_data$Status!="Archived", ])
+  if (not_completed_n > 0){
+    cat("Not completed tasks: ", not_completed_n, " (")
+    not_compl_tags <- unique(cur_data[cur_data$Status!="Completed"&cur_data$Status!="Rejected"&cur_data$Status!="Archived", ]$Tag)
+    cat(not_compl_tags[1])
+    if (length(not_compl_tags) > 1){
+      for (j in c(2:length(not_compl_tags))){
+        cat(", ", not_compl_tags[j])
+      }
+      cat(")  \n ")
+    } else{
+      cat(")  \n ")
+    }
+  } else{
+    cat("Not completed tasks: ", not_completed_n, "  \n ")
+  }
+  
+  ntasks <- pie_graph(cur_data, "Tag", "cnt", "# of tasks", 1, cust_colours) # количество задач
+  pom <- pie_graph(cur_data, "Tag", "Pomodoros", "Assumed hours", 0.5, cust_colours) # количество предполагаемых часов
+  apom <- pie_graph(cur_data, "Tag", "Actual.pomodoros", "Actual hours", 0.5, cust_colours) # количество реальных часов
+  p1 <- ggarrange(ntasks, pom, apom,
+                  ncol = 3, nrow = 1,
+                  common.legend = TRUE, legend = "right") # единая легенда
+  
+  priority <- pie_graph(cur_data, "Priority", "cnt", "By priority", 1, c("brown3", "darkolivegreen4", "gold"), 1) # количество задач
+  postponed <- pie_graph(cur_data, "Postponed", "cnt", "Postponed?", 1, c("darkolivegreen4", "brown3"), 1) # количество предполагаемых часов
+  p2 <- ggarrange(priority, postponed,
+                  ncol = 2, nrow = 1) # объединение
+  grid.arrange(p2, p1, nrow=2)
+  i <- i + 1
+  cat("  \n")
+  cat("  \n")
+}
+```
